@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jester Bot - Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Mobile Toggle -->
+    <button class="mobile-toggle" id="mobile-toggle"><i class="fas fa-bars"></i></button>
+
+    <!-- Sidebar -->
+    <nav id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <div class="logo-icon">J</div>
+          <span>Jester</span>
+        </div>
+      </div>
+      <div class="sidebar-menu" id="sidebar-menu-main">
+        <a href="#" class="menu-item active" data-page="home"><i class="fas fa-home"></i><span>Home</span></a>
+        <a href="#" class="menu-item" data-page="commands"><i class="fas fa-terminal"></i><span>Commands</span></a>
+        <a href="#" class="menu-item" data-page="dashboard" id="nav-dashboard"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
+        <a href="#" class="menu-item" data-page="docs"><i class="fas fa-book"></i><span>Docs</span></a>
+      </div>
+      <div class="sidebar-menu" id="sidebar-menu-server" style="display:none;">
+        <a href="#" class="menu-item" id="sidebar-back-btn"><i class="fas fa-arrow-left"></i><span>Back to Servers</span></a>
+        <div class="sidebar-server-name" id="sidebar-server-name"></div>
+        <div class="sidebar-divider"></div>
+        <a href="#" class="menu-item server-tab-item active" data-tab="permissions"><i class="fas fa-key"></i><span>Permissions</span></a>
+        <a href="#" class="menu-item server-tab-item" data-tab="general"><i class="fas fa-cog"></i><span>General</span></a>
+        <a href="#" class="menu-item server-tab-item" data-tab="moderation"><i class="fas fa-shield-alt"></i><span>Moderation</span></a>
+        <a href="#" class="menu-item server-tab-item" data-tab="logging"><i class="fas fa-file-alt"></i><span>Logging</span></a>
+        <a href="#" class="menu-item server-tab-item" data-tab="leveling"><i class="fas fa-chart-line"></i><span>Leveling</span></a>
+        <a href="#" class="menu-item server-tab-item" data-tab="economy"><i class="fas fa-coins"></i><span>Economy</span></a>
+      </div>
+      <div class="sidebar-footer">
+        <div class="sidebar-login" id="sidebar-login">
+          <button class="login-btn" id="login-btn"><i class="fab fa-discord"></i> Login with Discord</button>
+        </div>
+        <div class="sidebar-user" id="sidebar-user" style="display:none;">
+          <div class="user-info">
+            <div class="user-avatar" id="user-avatar">U</div>
+            <div>
+              <div class="user-name" id="user-name">User</div>
+            </div>
+          </div>
+          <div class="sidebar-profile-actions">
+            <a href="https://discord.com/oauth2/authorize?client_id=1503968081519837184&permissions=8&scope=bot%20applications.commands" target="_blank" class="profile-action-item"><i class="fas fa-plus-circle"></i><span>Invite Bot</span></a>
+            <button class="profile-action-item" id="theme-toggle-btn"><i class="fas fa-moon" id="theme-icon"></i><span id="theme-label">Light Mode</span></button>
+            <button class="profile-action-item logout" id="logout-btn"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- Top bar with logout (visible when logged in) -->
+      <div class="topbar" id="topbar" style="display:none;">
+        <div class="topbar-user">
+          <div class="topbar-avatar" id="topbar-avatar">U</div>
+          <span class="topbar-name" id="topbar-name">User</span>
+        </div>
+        <button class="btn btn-danger btn-sm" id="topbar-logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+      </div>
+
+      <!-- ===== HOME PAGE ===== -->
+      <div id="page-home" class="page active">
+        <div class="hero">
+          <div class="hero-badge">Discord Bot</div>
+          <h1>Meet <span class="gradient-text">Jester</span></h1>
+          <p class="hero-subtitle">The all-in-one Discord bot for moderation, leveling, economy, tickets, giveaways, and more.</p>
+          <div class="hero-stats">
+            <div class="stat-card"><div class="stat-number">12</div><div class="stat-label">Servers</div></div>
+            <div class="stat-card"><div class="stat-number">1.2K</div><div class="stat-label">Users</div></div>
+            <div class="stat-card"><div class="stat-number">107</div><div class="stat-label">Commands</div></div>
+          </div>
+          <div class="hero-buttons">
+            <a href="https://discord.com/oauth2/authorize?client_id=1503968081519837184" class="btn btn-primary" target="_blank"><i class="fas fa-plus"></i> Add to Server</a>
+            <button class="btn btn-secondary" id="hero-dashboard-btn"><i class="fas fa-tachometer-alt"></i> Dashboard</button>
+          </div>
+        </div>
+        <div class="features-section">
+          <h2 class="section-title">Powerful Features</h2>
+          <div class="features-grid">
+            <div class="feature-card"><div class="feature-icon"><i class="fas fa-shield-alt"></i></div><h3>Moderation</h3><p>18 commands: ban, kick, mute, warn, purge, nuke, slowmode, and more.</p></div>
+            <div class="feature-card"><div class="feature-icon"><i class="fas fa-coins"></i></div><h3>Economy</h3><p>24 commands: balance, daily, blackjack, slots, crash, fish, hunt, shop, and more.</p></div>
+            <div class="feature-card"><div class="feature-icon"><i class="fas fa-gamepad"></i></div><h3>Fun</h3><p>19 commands: 8ball, trivia, tictactoe, meme, rps, truth or dare, and more.</p></div>
+            <div class="feature-card"><div class="feature-icon"><i class="fas fa-chart-line"></i></div><h3>Leveling</h3><p>6 commands: rank cards, leaderboards, XP config, and role rewards.</p></div>
+            <div class="feature-card"><div class="feature-icon"><i class="fas fa-gift"></i></div><h3>Giveaways</h3><p>8 commands: start, end, reroll, pause, resume, drop, and more.</p></div>
+            <div class="feature-card"><div class="feature-icon"><i class="fas fa-ticket-alt"></i></div><h3>Tickets</h3><p>3 commands: create tickets, manage, and configure the ticket system.</p></div>
+            <div class="feature-card"><div class="feature-icon"><i class="fas fa-font"></i></div><h3>Text</h3><p>11 commands: ascii art, base64, binary, emojify, mock text, and more.</p></div>
+            <div class="feature-card"><div class="feature-icon"><i class="fas fa-wrench"></i></div><h3>Utility</h3><p>13 commands: afk, polls, reminders, embeds, snipe, calculator, and more.</p></div>
+            <div class="feature-card"><div class="feature-icon"><i class="fas fa-info-circle"></i></div><h3>General</h3><p>12 commands: avatar, banner, serverinfo, userinfo, roleinfo, and more.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== COMMANDS PAGE ===== -->
+      <div id="page-commands" class="page">
+        <div class="page-header">
+          <h1><i class="fas fa-terminal"></i> Commands</h1>
+          <p>Browse all available commands by category</p>
+        </div>
+        <div class="commands-search">
+          <input type="text" id="command-search" placeholder="Search commands..." class="search-input">
+        </div>
+        <div id="commands-container" class="commands-container"></div>
+      </div>
+
+      <!-- ===== DASHBOARD - Server List ===== -->
+      <div id="page-dashboard" class="page">
+        <div class="page-header">
+          <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+          <p>Select a server to manage</p>
+          <button class="btn btn-secondary btn-sm" id="refresh-guilds-btn" style="display:none;margin-top:0.5rem;"><i class="fas fa-sync-alt"></i> Refresh Servers</button>
+        </div>
+        <div id="dashboard-login-prompt" class="login-prompt" style="display:none;">
+          <i class="fas fa-lock"></i>
+          <h2>Login Required</h2>
+          <p>Please log in with Discord to access your server dashboard.</p>
+          <button class="btn btn-primary" id="dashboard-login-btn"><i class="fab fa-discord"></i> Login with Discord</button>
+        </div>
+        <div id="guilds-container" class="guilds-grid"></div>
+      </div>
+
+      <!-- ===== SERVER CONFIG PAGE ===== -->
+      <div id="page-server" class="page">
+        <div class="server-header">
+          <button class="btn btn-secondary btn-sm" id="back-to-dashboard"><i class="fas fa-arrow-left"></i> Back</button>
+          <div class="server-title">
+            <div class="server-icon" id="server-icon">S</div>
+            <div>
+              <h1 id="server-name">Server Settings</h1>
+              <p id="server-info" class="text-muted"></p>
+            </div>
+          </div>
+        </div>
+        <!-- Server tabs are now in the sidebar -->
+        <div id="server-content" class="server-content"></div>
+      </div>
+
+      <!-- ===== DOCS PAGE ===== -->
+      <div id="page-docs" class="page">
+        <div class="page-header">
+          <h1><i class="fas fa-book"></i> Documentation</h1>
+          <p>Learn how to use Jester Bot</p>
+        </div>
+        <div class="docs-grid">
+          <div class="docs-card">
+            <h3><i class="fas fa-rocket"></i> Getting Started</h3>
+            <p>Invite the bot, set a prefix, and configure basic settings.</p>
+            <ul>
+              <li>Use the <strong>Add to Server</strong> button on the home page</li>
+              <li>Default prefix is <code>f!</code></li>
+              <li>Run <code>f!help</code> to see all commands</li>
+              <li>Use <code>f!help &lt;command&gt;</code> for detailed usage</li>
+              <li>Visit the Dashboard to configure permissions per role</li>
+            </ul>
+          </div>
+          <div class="docs-card">
+            <h3><i class="fas fa-key"></i> Permissions</h3>
+            <p>Control who can use which commands with the dashboard.</p>
+            <ul>
+              <li>Go to Dashboard &rarr; select server &rarr; Permissions tab</li>
+              <li>Toggle commands on/off per role (9 categories, 107 commands)</li>
+              <li>Set channel-specific overrides to restrict commands</li>
+              <li>Use Allow All / Deny All for entire categories</li>
+            </ul>
+          </div>
+          <div class="docs-card">
+            <h3><i class="fas fa-shield-alt"></i> Moderation (18 cmds)</h3>
+            <p>Full suite of moderation tools.</p>
+            <ul>
+              <li><code>f!ban</code>, <code>f!kick</code>, <code>f!mute</code>, <code>f!warn</code></li>
+              <li><code>f!purge</code> &mdash; bulk delete messages</li>
+              <li><code>f!nuke</code> &mdash; clone &amp; delete a channel</li>
+              <li><code>f!hackban</code> &mdash; ban by ID even if not in server</li>
+              <li><code>f!warnings</code> / <code>f!clearwarns</code> to manage warns</li>
+            </ul>
+          </div>
+          <div class="docs-card">
+            <h3><i class="fas fa-coins"></i> Economy (24 cmds)</h3>
+            <p>Full economy system with banking, gambling, and activities.</p>
+            <ul>
+              <li><code>f!balance</code>, <code>f!daily</code>, <code>f!work</code>, <code>f!deposit</code>, <code>f!withdraw</code></li>
+              <li>Gambling: <code>f!blackjack</code>, <code>f!slots</code>, <code>f!crash</code>, <code>f!roulette</code>, <code>f!coinflip</code></li>
+              <li>Activities: <code>f!fish</code>, <code>f!hunt</code>, <code>f!scratch</code></li>
+              <li>Shop: <code>f!shop</code>, <code>f!buy</code>, <code>f!inventory</code>, <code>f!additem</code></li>
+            </ul>
+          </div>
+          <div class="docs-card">
+            <h3><i class="fas fa-gamepad"></i> Fun (19 cmds)</h3>
+            <p>Games, memes, and social commands.</p>
+            <ul>
+              <li>Games: <code>f!tictactoe</code>, <code>f!rps</code>, <code>f!trivia</code>, <code>f!numberguess</code></li>
+              <li>Social: <code>f!ship</code>, <code>f!howgay</code>, <code>f!roast</code>, <code>f!compliment</code></li>
+              <li>Random: <code>f!8ball</code>, <code>f!meme</code>, <code>f!joke</code>, <code>f!fact</code></li>
+              <li>Party: <code>f!truth</code>, <code>f!dare</code>, <code>f!wyr</code></li>
+            </ul>
+          </div>
+          <div class="docs-card">
+            <h3><i class="fas fa-gift"></i> Giveaways (8 cmds)</h3>
+            <p>Full giveaway system with advanced controls.</p>
+            <ul>
+              <li><code>f!giveaway start &lt;duration&gt; &lt;winners&gt; &lt;prize&gt;</code></li>
+              <li><code>f!giveaway end</code> / <code>f!giveaway reroll</code></li>
+              <li><code>f!giveaway pause</code> / <code>f!giveaway resume</code></li>
+              <li><code>f!giveaway drop</code> &mdash; instant giveaway, first to react wins</li>
+              <li><code>f!giveaway list</code> &mdash; view active giveaways</li>
+            </ul>
+          </div>
+          <div class="docs-card">
+            <h3><i class="fas fa-chart-line"></i> Leveling (6 cmds)</h3>
+            <p>XP system with rank cards and role rewards.</p>
+            <ul>
+              <li><code>f!rank</code> &mdash; view your rank card</li>
+              <li><code>f!leaderboard</code> &mdash; server XP leaderboard</li>
+              <li><code>f!levelconfig</code> &mdash; configure XP settings</li>
+              <li><code>f!setlevel</code> / <code>f!setxp</code> / <code>f!resetlevel</code> (admin)</li>
+            </ul>
+          </div>
+          <div class="docs-card">
+            <h3><i class="fas fa-wrench"></i> Utility (13 cmds)</h3>
+            <p>Helpful utility commands for everyday use.</p>
+            <ul>
+              <li><code>f!afk</code>, <code>f!remind</code>, <code>f!timer</code>, <code>f!poll</code></li>
+              <li><code>f!snipe</code> / <code>f!editsnipe</code> &mdash; recover deleted/edited messages</li>
+              <li><code>f!calculate</code>, <code>f!color</code>, <code>f!embed</code></li>
+              <li><code>f!prefix</code> &mdash; change the bot prefix</li>
+            </ul>
+          </div>
+          <div class="docs-card">
+            <h3><i class="fas fa-font"></i> Text (11 cmds)</h3>
+            <p>Text manipulation and conversion tools.</p>
+            <ul>
+              <li><code>f!ascii</code> &mdash; convert text to ASCII art</li>
+              <li><code>f!base64encode</code> / <code>f!base64decode</code></li>
+              <li><code>f!binary</code>, <code>f!emojify</code>, <code>f!mock</code></li>
+              <li><code>f!reverse</code>, <code>f!uppercase</code>, <code>f!lowercase</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Login modal removed — real Discord OAuth2 redirect is used -->
+
+  <script src="app.js"></script>
+</body>
+</html>
