@@ -188,7 +188,8 @@ async function refreshBotPresence() {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    const resp = await fetch(API_URL + '/api/bot/guilds', { signal: controller.signal });
+    const { url, headers } = _apiFetchUrl('/api/bot/guilds');
+    const resp = await fetch(url, { headers, signal: controller.signal });
     clearTimeout(timeoutId);
     if (!resp.ok) throw new Error('API returned status ' + resp.status);
     const data = await resp.json();
@@ -294,12 +295,27 @@ document.getElementById('sidebar-overlay').addEventListener('click', () => {
 });
 
 // ===== Discord OAuth2 Login (Authorization Code Flow) =====
-async function discordLogin() {
-  // Check if backend is reachable before redirecting
+function _apiFetchUrl(path) {
   try {
+    const u = new URL(API_URL + path);
+    const headers = {};
+    if (u.username) {
+      headers['Authorization'] = 'Basic ' + btoa(u.username + ':' + u.password);
+      u.username = '';
+      u.password = '';
+    }
+    return { url: u.href, headers };
+  } catch (_) {
+    return { url: API_URL + path, headers: {} };
+  }
+}
+
+async function discordLogin() {
+  try {
+    const { url, headers } = _apiFetchUrl('/');
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
-    const resp = await fetch(API_URL + '/login', { mode: 'no-cors', signal: controller.signal });
+    await fetch(url, { headers, signal: controller.signal });
     clearTimeout(timeoutId);
     window.location.href = API_URL + '/login';
   } catch (err) {
