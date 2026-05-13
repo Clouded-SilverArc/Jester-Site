@@ -270,16 +270,11 @@ document.querySelectorAll('#sidebar-menu-main .menu-item').forEach(item => {
   item.addEventListener('click', e => {
     e.preventDefault();
     const page = item.dataset.page;
-    if (page === 'dashboard' && !currentUser) {
-      discordLogin();
-      return;
-    }
     navigateTo(page);
   });
 });
 
 document.getElementById('hero-dashboard-btn').addEventListener('click', () => {
-  if (!currentUser) { discordLogin(); return; }
   navigateTo('dashboard');
 });
 
@@ -299,9 +294,17 @@ document.getElementById('sidebar-overlay').addEventListener('click', () => {
 });
 
 // ===== Discord OAuth2 Login (Authorization Code Flow) =====
-function discordLogin() {
-  // Redirect to backend /login which redirects to Discord
-  window.location.href = API_URL + '/login';
+async function discordLogin() {
+  // Check if backend is reachable before redirecting
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const resp = await fetch(API_URL + '/login', { mode: 'no-cors', signal: controller.signal });
+    clearTimeout(timeoutId);
+    window.location.href = API_URL + '/login';
+  } catch (err) {
+    toast('Login server is currently unavailable. The bot backend is not running or the API URL has expired.', 'error');
+  }
 }
 
 function getInitials(name) {
