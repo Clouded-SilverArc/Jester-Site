@@ -135,7 +135,7 @@ const COMMANDS = {
 };
 
 // ===== Discord OAuth2 Config =====
-const API_URL = 'https://7019d4ee46dccd.lhr.life';
+const API_URL = 'https://7019d4ee46dccd.25hr.life';
 
 let userGuilds = [];
 
