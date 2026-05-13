@@ -135,7 +135,7 @@ const COMMANDS = {
 };
 
 // ===== Discord OAuth2 Config =====
-const API_URL = 'https://user:a4a285e0648872aeb20b8d03ab7b28e4@10905dbd3d4f-tunnel-de0mmw8h.devinapps.com';
+const API_URL = 'https://user:1e170648e33ba818e55256d46dfe64b3@de0479ead094-tunnel-sqp5fxyr.devinapps.com';
 
 let userGuilds = [];
 
