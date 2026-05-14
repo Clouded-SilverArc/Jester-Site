@@ -550,9 +550,27 @@ function hideServerSidebar() {
   document.getElementById('sidebar-menu-server').style.display = 'none';
 }
 
-function openServer(guild) {
+async function openServer(guild) {
   currentServer = guild;
   currentTab = 'permissions';
+
+  // Fetch roles from API if not already loaded
+  if ((!guild.roles || guild.roles.length === 0) && guild.botIn) {
+    try {
+      const resp = await fetch(API_URL + '/api/guilds/' + guild.id + '/roles');
+      if (resp.ok) {
+        const data = await resp.json();
+        guild.roles = data.roles || [];
+        // Update localStorage
+        const idx = userGuilds.findIndex(g => g.id === guild.id);
+        if (idx !== -1) userGuilds[idx].roles = guild.roles;
+        localStorage.setItem('discord_guilds', JSON.stringify(userGuilds));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch roles:', err.message);
+    }
+  }
+
   const roles = guild.roles || [];
   currentRole = roles.length > 0 ? roles[0].id : null;
   hasUnsaved = false;
