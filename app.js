@@ -187,7 +187,7 @@ async function refreshBotPresence() {
   lastApiError = null;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     const resp = await fetch(API_URL + '/api/bot/guilds', { signal: controller.signal });
     clearTimeout(timeoutId);
     if (!resp.ok) throw new Error('API returned status ' + resp.status);
@@ -210,7 +210,7 @@ document.getElementById('refresh-guilds-btn')?.addEventListener('click', async (
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
   try {
     await refreshBotPresence();
-    renderDashboard();
+    renderDashboard(true);
     toast('Server list refreshed', 'success');
   } catch (e) {
     toast('Failed to refresh: ' + (e.message || 'Unknown error'), 'error');
@@ -470,7 +470,7 @@ function renderCommands(filter = '') {
 document.getElementById('command-search').addEventListener('input', e => renderCommands(e.target.value));
 
 // ===== Dashboard Page =====
-function renderDashboard() {
+function renderDashboard(skipRefresh) {
   const container = document.getElementById('guilds-container');
   const prompt = document.getElementById('dashboard-login-prompt');
   if (!currentUser) {
@@ -483,7 +483,10 @@ function renderDashboard() {
     container.innerHTML = '<div class="login-prompt"><i class="fas fa-server"></i><h2>No Servers Found</h2><p>You don\'t have Manage Server permission in any servers, or no servers were returned.</p></div>';
     return;
   }
-  let html = '';
+  if (skipRefresh) {
+    renderGuildCards(container);
+    return;
+  }
   // Try to refresh bot presence from API
   refreshBotPresence().then(() => {
     renderGuildCards(container);
