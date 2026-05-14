@@ -135,7 +135,7 @@ const COMMANDS = {
 };
 
 // ===== Discord OAuth2 Config =====
-const API_URL = 'https://web-production-98221.up.railway.app';
+const API_URL = 'https://web-production-ccf0c.up.railway.app';
 
 let userGuilds = [];
 
