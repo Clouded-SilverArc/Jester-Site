@@ -518,11 +518,11 @@ code { background: var(--bg-tertiary); padding: 0.15em 0.4em; border-radius: 4px
 .channel-row span { color: var(--text-secondary); display: flex; align-items: center; gap: 0.35rem; }
 
 .save-bar {
-  position: sticky; bottom: 0;
+  position: fixed; bottom: 0; left: 0; right: 0;
   background: var(--bg-secondary); border-top: 1px solid var(--border);
-  padding: 0.75rem 1.5rem; margin: 1.5rem -1.5rem -1.5rem;
+  padding: 0.75rem 1.5rem;
   display: flex; align-items: center; justify-content: space-between;
-  border-radius: 0 0 var(--radius) var(--radius);
+  z-index: 1000;
 }
 .save-bar p { font-size: 0.85rem; color: var(--text-secondary); }
 .save-bar .btn { margin-left: 0.5rem; }
@@ -666,7 +666,7 @@ code { background: var(--bg-tertiary); padding: 0.15em 0.4em; border-radius: 4px
   .docs-grid { grid-template-columns: 1fr; }
   .toast { min-width: auto; max-width: calc(100vw - 2rem); }
   .toast-container { right: 0.5rem; bottom: 0.5rem; left: 0.5rem; }
-  .save-bar { margin: 1rem -1rem -1rem; padding: 0.6rem 1rem; }
+  .save-bar { padding: 0.6rem 1rem; }
   .channel-override { padding: 0.75rem; }
   .perms-header { flex-direction: column; align-items: flex-start; }
 }
