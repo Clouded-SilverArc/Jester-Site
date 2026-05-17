@@ -135,7 +135,7 @@ const COMMANDS = {
 };
 
 // ===== Discord OAuth2 Config =====
-const API_URL = 'https://web-production-ccf0c.up.railway.app';
+const API_URL = 'http://localhost:8000';
 
 let userGuilds = [];
 
@@ -885,6 +885,9 @@ document.getElementById('save-btn').addEventListener('click', async () => {
     savedConfig = JSON.parse(JSON.stringify(serverConfig));
     hasUnsaved = false;
     document.getElementById('save-bar').style.display = 'none';
+    // Clear role configuration after save
+    currentRole = null;
+    renderTab(currentTab);
     toast('Settings saved for ' + currentServer.name, 'success');
   } catch (err) {
     toast('Failed to save: ' + (err.message || 'Unknown error'), 'error');
@@ -900,10 +903,11 @@ document.getElementById('discard-btn').addEventListener('click', () => {
   serverConfig = JSON.parse(JSON.stringify(savedConfig));
   hasUnsaved = false;
   document.getElementById('save-bar').style.display = 'none';
-  // Reset permissions state
+  // Reset permissions state and clear role configuration
   permState[guildId] = {};
   channelOverrides[guildId] = {};
   initPermState(guildId);
+  currentRole = null;
   renderTab(currentTab);
   toast('Changes discarded', 'info');
 });
