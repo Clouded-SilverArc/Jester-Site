@@ -181,6 +181,23 @@ let permState = {};
 let channelOverrides = {};
 let hasUnsaved = false;
 let lastApiError = null;
+let serverConfig = {};
+let savedConfig = {};
+
+function defaultConfig() {
+  return {
+    prefix: 'f!', language: 'English', embedResponses: true, deleteCommands: false,
+    welcomeMessages: true, welcomeChannel: '', goodbyeMessages: false,
+    autoMod: true, antiSpam: true, antiLink: false, antiInvite: true,
+    warn3Action: 'Mute (1 hour)', warn5Action: 'Ban', bannedWords: '',
+    logChannel: '', logMessageDeletes: true, logMessageEdits: true,
+    logMemberJoins: true, logMemberLeaves: true, logBans: true,
+    logRoleChanges: false, logVoiceChanges: false, logChannelUpdates: false,
+    levelingEnabled: true, minXp: 15, maxXp: 25, levelUpChannel: '# general',
+    economyEnabled: true, currencyName: 'Coins', currencySymbol: '$',
+    dailyReward: 100, startingBalance: 0, gamblingEnabled: true, minBet: 10, maxBet: 10000
+  };
+}
 
 // ===== Bot Presence Check =====
 async function refreshBotPresence() {
@@ -564,7 +581,6 @@ async function openServer(guild) {
       if (resp.ok) {
         const data = await resp.json();
         guild.roles = data.roles || [];
-        // Update localStorage
         const idx = userGuilds.findIndex(g => g.id === guild.id);
         if (idx !== -1) userGuilds[idx].roles = guild.roles;
         localStorage.setItem('discord_guilds', JSON.stringify(userGuilds));
@@ -574,10 +590,30 @@ async function openServer(guild) {
     }
   }
 
+  // Load server config from backend (fall back to defaults)
+  serverConfig = defaultConfig();
+  let loadedPerms = null;
+  let loadedOverrides = null;
+  try {
+    const resp = await fetch(API_URL + '/api/guilds/' + guild.id + '/config');
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.config) Object.assign(serverConfig, data.config);
+      if (data.permissions) loadedPerms = data.permissions;
+      if (data.channelOverrides) loadedOverrides = data.channelOverrides;
+    }
+  } catch (err) {
+    console.warn('Failed to load server config:', err.message);
+  }
+  savedConfig = JSON.parse(JSON.stringify(serverConfig));
+
   const roles = guild.roles || [];
   currentRole = roles.length > 0 ? roles[0].id : null;
   hasUnsaved = false;
+  document.getElementById('save-bar').style.display = 'none';
   initPermState(guild.id);
+  if (loadedPerms) permState[guild.id] = loadedPerms;
+  if (loadedOverrides) channelOverrides[guild.id] = loadedOverrides;
 
   document.getElementById('server-name').textContent = guild.name;
   document.getElementById('server-info').textContent = guild.members.toLocaleString() + ' members';
@@ -737,15 +773,6 @@ function renderPermissions(el) {
   });
   html += '</div>';
 
-  // Save bar
-  html += `<div class="save-bar" id="save-bar" style="${hasUnsaved ? '' : 'display:none;'}">
-    <p><span class="unsaved-dot"></span>You have unsaved changes</p>
-    <div>
-      <button class="btn btn-secondary btn-sm" id="discard-btn">Discard</button>
-      <button class="btn btn-success btn-sm" id="save-btn"><i class="fas fa-save"></i> Save</button>
-    </div>
-  </div>`;
-
   el.innerHTML = html;
   bindPermEvents(el);
 }
@@ -832,27 +859,6 @@ function bindPermEvents(el) {
     });
   });
 
-  // Save / Discard
-  const saveBtn = document.getElementById('save-btn');
-  const discardBtn = document.getElementById('discard-btn');
-  if (saveBtn) {
-    saveBtn.addEventListener('click', () => {
-      hasUnsaved = false;
-      document.getElementById('save-bar').style.display = 'none';
-      toast('Permissions saved for ' + currentServer.name, 'success');
-    });
-  }
-  if (discardBtn) {
-    discardBtn.addEventListener('click', () => {
-      hasUnsaved = false;
-      initPermState(guildId);
-      permState[guildId] = {};
-      channelOverrides[guildId] = {};
-      initPermState(guildId);
-      renderPermissions(el);
-      toast('Changes discarded', 'info');
-    });
-  }
 }
 
 function markUnsaved() {
@@ -861,74 +867,138 @@ function markUnsaved() {
   if (bar) bar.style.display = 'flex';
 }
 
+// Global save/discard handlers
+document.getElementById('save-btn').addEventListener('click', async () => {
+  if (!currentServer) return;
+  const guildId = currentServer.id;
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+  try {
+    const payload = { config: serverConfig, permissions: permState[guildId] || {}, channelOverrides: channelOverrides[guildId] || {} };
+    const resp = await fetch(API_URL + '/api/guilds/' + guildId + '/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) throw new Error('Save failed: ' + resp.status);
+    savedConfig = JSON.parse(JSON.stringify(serverConfig));
+    hasUnsaved = false;
+    document.getElementById('save-bar').style.display = 'none';
+    toast('Settings saved for ' + currentServer.name, 'success');
+  } catch (err) {
+    toast('Failed to save: ' + (err.message || 'Unknown error'), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Save';
+  }
+});
+
+document.getElementById('discard-btn').addEventListener('click', () => {
+  if (!currentServer) return;
+  const guildId = currentServer.id;
+  serverConfig = JSON.parse(JSON.stringify(savedConfig));
+  hasUnsaved = false;
+  document.getElementById('save-bar').style.display = 'none';
+  // Reset permissions state
+  permState[guildId] = {};
+  channelOverrides[guildId] = {};
+  initPermState(guildId);
+  renderTab(currentTab);
+  toast('Changes discarded', 'info');
+});
+
 // ===== GENERAL TAB =====
 function renderGeneral(el) {
+  const c = serverConfig;
   el.innerHTML = `
     <div class="config-section">
       <h3><i class="fas fa-cog"></i> General Settings</h3>
       <div class="form-group">
         <label class="form-label">Bot Prefix</label>
-        <input type="text" class="form-input" value="f!" placeholder="Enter prefix">
+        <input type="text" class="form-input" data-cfg="prefix" value="${c.prefix}" placeholder="Enter prefix">
       </div>
       <div class="form-group">
         <label class="form-label">Language</label>
-        <select class="form-select">
-          <option>English</option>
-          <option>Spanish</option>
-          <option>French</option>
-          <option>German</option>
+        <select class="form-select" data-cfg="language">
+          ${['English','Spanish','French','German'].map(l => `<option ${c.language === l ? 'selected' : ''}>${l}</option>`).join('')}
         </select>
       </div>
       <div class="toggle-row">
         <div class="toggle-info"><div class="toggle-label">Embed Responses</div><div class="toggle-desc">Send bot responses as embeds</div></div>
-        <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+        <div class="toggle ${c.embedResponses ? 'active' : ''}" data-cfg="embedResponses"></div>
       </div>
       <div class="toggle-row">
         <div class="toggle-info"><div class="toggle-label">Delete Command Messages</div><div class="toggle-desc">Auto-delete the user's command message</div></div>
-        <div class="toggle" onclick="this.classList.toggle('active')"></div>
+        <div class="toggle ${c.deleteCommands ? 'active' : ''}" data-cfg="deleteCommands"></div>
       </div>
     </div>
     <div class="config-section">
       <h3><i class="fas fa-bell"></i> Notifications</h3>
       <div class="toggle-row">
         <div class="toggle-info"><div class="toggle-label">Welcome Messages</div><div class="toggle-desc">Send a message when a new member joins</div></div>
-        <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+        <div class="toggle ${c.welcomeMessages ? 'active' : ''}" data-cfg="welcomeMessages"></div>
       </div>
       <div class="form-group" style="margin-top:1rem;">
         <label class="form-label">Welcome Channel</label>
-        <select class="form-select">
-          <option>Select channel...</option>
-          <option># general</option>
-          <option># welcome</option>
+        <select class="form-select" data-cfg="welcomeChannel">
+          <option value="" ${!c.welcomeChannel ? 'selected' : ''}>Select channel...</option>
+          <option value="# general" ${c.welcomeChannel === '# general' ? 'selected' : ''}># general</option>
+          <option value="# welcome" ${c.welcomeChannel === '# welcome' ? 'selected' : ''}># welcome</option>
         </select>
       </div>
       <div class="toggle-row">
         <div class="toggle-info"><div class="toggle-label">Goodbye Messages</div><div class="toggle-desc">Send a message when a member leaves</div></div>
-        <div class="toggle" onclick="this.classList.toggle('active')"></div>
+        <div class="toggle ${c.goodbyeMessages ? 'active' : ''}" data-cfg="goodbyeMessages"></div>
       </div>
     </div>`;
+  bindConfigEvents(el);
+}
+
+// ===== Shared config event binding =====
+function bindConfigEvents(container) {
+  container.querySelectorAll('.toggle[data-cfg]').forEach(toggle => {
+    toggle.onclick = function() {
+      this.classList.toggle('active');
+      serverConfig[this.dataset.cfg] = this.classList.contains('active');
+      markUnsaved();
+    };
+  });
+  container.querySelectorAll('input[data-cfg]').forEach(input => {
+    input.addEventListener('input', function() {
+      serverConfig[this.dataset.cfg] = this.type === 'number' ? Number(this.value) : this.value;
+      markUnsaved();
+    });
+  });
+  container.querySelectorAll('select[data-cfg]').forEach(sel => {
+    sel.addEventListener('change', function() {
+      serverConfig[this.dataset.cfg] = this.value;
+      markUnsaved();
+    });
+  });
 }
 
 // ===== MODERATION TAB =====
 function renderModeration(el) {
+  const c = serverConfig;
   el.innerHTML = `
     <div class="config-section">
       <h3><i class="fas fa-shield-alt"></i> Moderation Settings</h3>
       <div class="toggle-row">
         <div class="toggle-info"><div class="toggle-label">Auto-Mod</div><div class="toggle-desc">Automatically moderate messages</div></div>
-        <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+        <div class="toggle ${c.autoMod ? 'active' : ''}" data-cfg="autoMod"></div>
       </div>
       <div class="toggle-row">
         <div class="toggle-info"><div class="toggle-label">Anti-Spam</div><div class="toggle-desc">Detect and prevent spam messages</div></div>
-        <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+        <div class="toggle ${c.antiSpam ? 'active' : ''}" data-cfg="antiSpam"></div>
       </div>
       <div class="toggle-row">
         <div class="toggle-info"><div class="toggle-label">Anti-Link</div><div class="toggle-desc">Block links from non-permitted users</div></div>
-        <div class="toggle" onclick="this.classList.toggle('active')"></div>
+        <div class="toggle ${c.antiLink ? 'active' : ''}" data-cfg="antiLink"></div>
       </div>
       <div class="toggle-row">
         <div class="toggle-info"><div class="toggle-label">Anti-Invite</div><div class="toggle-desc">Block Discord invite links</div></div>
-        <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+        <div class="toggle ${c.antiInvite ? 'active' : ''}" data-cfg="antiInvite"></div>
       </div>
     </div>
     <div class="config-section">
@@ -937,11 +1007,15 @@ function renderModeration(el) {
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">3 Warnings</label>
-          <select class="form-select"><option>Mute (1 hour)</option><option>Kick</option><option>Nothing</option></select>
+          <select class="form-select" data-cfg="warn3Action">
+            ${['Mute (1 hour)','Kick','Nothing'].map(o => `<option ${c.warn3Action === o ? 'selected' : ''}>${o}</option>`).join('')}
+          </select>
         </div>
         <div class="form-group">
           <label class="form-label">5 Warnings</label>
-          <select class="form-select"><option>Ban</option><option>Kick</option><option>Mute (24 hours)</option></select>
+          <select class="form-select" data-cfg="warn5Action">
+            ${['Ban','Kick','Mute (24 hours)'].map(o => `<option ${c.warn5Action === o ? 'selected' : ''}>${o}</option>`).join('')}
+          </select>
         </div>
       </div>
     </div>
@@ -949,101 +1023,109 @@ function renderModeration(el) {
       <h3><i class="fas fa-ban"></i> Banned Words</h3>
       <div class="form-group">
         <label class="form-label">Add words or phrases (comma separated)</label>
-        <input type="text" class="form-input" placeholder="word1, word2, phrase...">
+        <input type="text" class="form-input" data-cfg="bannedWords" value="${c.bannedWords}" placeholder="word1, word2, phrase...">
       </div>
     </div>`;
+  bindConfigEvents(el);
 }
 
 // ===== LOGGING TAB =====
 function renderLogging(el) {
+  const c = serverConfig;
   el.innerHTML = `
     <div class="config-section">
       <h3><i class="fas fa-file-alt"></i> Logging Settings</h3>
       <div class="form-group">
         <label class="form-label">Log Channel</label>
-        <select class="form-select">
-          <option>Select channel...</option>
-          <option># mod-logs</option>
-          <option># audit-log</option>
+        <select class="form-select" data-cfg="logChannel">
+          <option value="" ${!c.logChannel ? 'selected' : ''}>Select channel...</option>
+          <option value="# mod-logs" ${c.logChannel === '# mod-logs' ? 'selected' : ''}># mod-logs</option>
+          <option value="# audit-log" ${c.logChannel === '# audit-log' ? 'selected' : ''}># audit-log</option>
         </select>
       </div>
     </div>
     <div class="config-section">
       <h3><i class="fas fa-list"></i> Events to Log</h3>
-      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Message Deletes</div></div><div class="toggle active" onclick="this.classList.toggle('active')"></div></div>
-      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Message Edits</div></div><div class="toggle active" onclick="this.classList.toggle('active')"></div></div>
-      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Member Joins</div></div><div class="toggle active" onclick="this.classList.toggle('active')"></div></div>
-      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Member Leaves</div></div><div class="toggle active" onclick="this.classList.toggle('active')"></div></div>
-      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Bans / Unbans</div></div><div class="toggle active" onclick="this.classList.toggle('active')"></div></div>
-      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Role Changes</div></div><div class="toggle" onclick="this.classList.toggle('active')"></div></div>
-      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Voice State Changes</div></div><div class="toggle" onclick="this.classList.toggle('active')"></div></div>
-      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Channel Updates</div></div><div class="toggle" onclick="this.classList.toggle('active')"></div></div>
+      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Message Deletes</div></div><div class="toggle ${c.logMessageDeletes ? 'active' : ''}" data-cfg="logMessageDeletes"></div></div>
+      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Message Edits</div></div><div class="toggle ${c.logMessageEdits ? 'active' : ''}" data-cfg="logMessageEdits"></div></div>
+      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Member Joins</div></div><div class="toggle ${c.logMemberJoins ? 'active' : ''}" data-cfg="logMemberJoins"></div></div>
+      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Member Leaves</div></div><div class="toggle ${c.logMemberLeaves ? 'active' : ''}" data-cfg="logMemberLeaves"></div></div>
+      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Bans / Unbans</div></div><div class="toggle ${c.logBans ? 'active' : ''}" data-cfg="logBans"></div></div>
+      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Role Changes</div></div><div class="toggle ${c.logRoleChanges ? 'active' : ''}" data-cfg="logRoleChanges"></div></div>
+      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Voice State Changes</div></div><div class="toggle ${c.logVoiceChanges ? 'active' : ''}" data-cfg="logVoiceChanges"></div></div>
+      <div class="toggle-row"><div class="toggle-info"><div class="toggle-label">Channel Updates</div></div><div class="toggle ${c.logChannelUpdates ? 'active' : ''}" data-cfg="logChannelUpdates"></div></div>
     </div>`;
+  bindConfigEvents(el);
 }
 
 // ===== LEVELING TAB =====
 function renderLeveling(el) {
+  const c = serverConfig;
   el.innerHTML = `
     <div class="config-section">
       <h3><i class="fas fa-chart-line"></i> Leveling System</h3>
       <div class="toggle-row">
         <div class="toggle-info"><div class="toggle-label">Enable Leveling</div><div class="toggle-desc">Members earn XP by chatting</div></div>
-        <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+        <div class="toggle ${c.levelingEnabled ? 'active' : ''}" data-cfg="levelingEnabled"></div>
       </div>
       <div class="form-row" style="margin-top:1rem;">
         <div class="form-group">
           <label class="form-label">Min XP per Message</label>
-          <input type="number" class="form-input" value="15" min="1" max="100">
+          <input type="number" class="form-input" data-cfg="minXp" value="${c.minXp}" min="1" max="100">
         </div>
         <div class="form-group">
           <label class="form-label">Max XP per Message</label>
-          <input type="number" class="form-input" value="25" min="1" max="100">
+          <input type="number" class="form-input" data-cfg="maxXp" value="${c.maxXp}" min="1" max="100">
         </div>
       </div>
       <div class="form-group">
         <label class="form-label">Level-Up Channel</label>
-        <select class="form-select"><option># general</option><option>Current Channel</option><option>DM</option><option>Disabled</option></select>
+        <select class="form-select" data-cfg="levelUpChannel">
+          ${['# general','Current Channel','DM','Disabled'].map(o => `<option ${c.levelUpChannel === o ? 'selected' : ''}>${o}</option>`).join('')}
+        </select>
       </div>
     </div>
     <div class="config-section">
       <h3><i class="fas fa-award"></i> Role Rewards</h3>
       <p class="config-section-desc">Assign roles automatically when members reach a certain level.</p>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Level 5</label><select class="form-select"><option>@Member</option><option>None</option></select></div>
-        <div class="form-group"><label class="form-label">Level 10</label><select class="form-select"><option>None</option><option>@Active</option></select></div>
+        <div class="form-group"><label class="form-label">Level 5</label><select class="form-select" data-cfg="roleRewardLv5">${['@Member','None'].map(o => `<option ${(c.roleRewardLv5||'@Member') === o ? 'selected' : ''}>${o}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Level 10</label><select class="form-select" data-cfg="roleRewardLv10">${['None','@Active'].map(o => `<option ${(c.roleRewardLv10||'None') === o ? 'selected' : ''}>${o}</option>`).join('')}</select></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Level 25</label><select class="form-select"><option>None</option><option>@Veteran</option></select></div>
-        <div class="form-group"><label class="form-label">Level 50</label><select class="form-select"><option>None</option><option>@Legend</option></select></div>
+        <div class="form-group"><label class="form-label">Level 25</label><select class="form-select" data-cfg="roleRewardLv25">${['None','@Veteran'].map(o => `<option ${(c.roleRewardLv25||'None') === o ? 'selected' : ''}>${o}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Level 50</label><select class="form-select" data-cfg="roleRewardLv50">${['None','@Legend'].map(o => `<option ${(c.roleRewardLv50||'None') === o ? 'selected' : ''}>${o}</option>`).join('')}</select></div>
       </div>
     </div>`;
+  bindConfigEvents(el);
 }
 
 // ===== ECONOMY TAB =====
 function renderEconomy(el) {
+  const c = serverConfig;
   el.innerHTML = `
     <div class="config-section">
       <h3><i class="fas fa-coins"></i> Economy Settings</h3>
       <div class="toggle-row">
         <div class="toggle-info"><div class="toggle-label">Enable Economy</div><div class="toggle-desc">Members can earn and spend coins</div></div>
-        <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+        <div class="toggle ${c.economyEnabled ? 'active' : ''}" data-cfg="economyEnabled"></div>
       </div>
       <div class="form-group" style="margin-top:1rem;">
         <label class="form-label">Currency Name</label>
-        <input type="text" class="form-input" value="Coins" placeholder="e.g., Coins, Gems, Gold">
+        <input type="text" class="form-input" data-cfg="currencyName" value="${c.currencyName}" placeholder="e.g., Coins, Gems, Gold">
       </div>
       <div class="form-group">
         <label class="form-label">Currency Symbol</label>
-        <input type="text" class="form-input" value="$" placeholder="e.g., $, C, G" style="max-width:100px;">
+        <input type="text" class="form-input" data-cfg="currencySymbol" value="${c.currencySymbol}" placeholder="e.g., $, C, G" style="max-width:100px;">
       </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Daily Reward</label>
-          <input type="number" class="form-input" value="100" min="1">
+          <input type="number" class="form-input" data-cfg="dailyReward" value="${c.dailyReward}" min="1">
         </div>
         <div class="form-group">
           <label class="form-label">Starting Balance</label>
-          <input type="number" class="form-input" value="0" min="0">
+          <input type="number" class="form-input" data-cfg="startingBalance" value="${c.startingBalance}" min="0">
         </div>
       </div>
     </div>
@@ -1051,19 +1133,20 @@ function renderEconomy(el) {
       <h3><i class="fas fa-dice"></i> Gambling</h3>
       <div class="toggle-row">
         <div class="toggle-info"><div class="toggle-label">Enable Gambling</div><div class="toggle-desc">Allow members to gamble coins</div></div>
-        <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+        <div class="toggle ${c.gamblingEnabled ? 'active' : ''}" data-cfg="gamblingEnabled"></div>
       </div>
       <div class="form-row" style="margin-top:1rem;">
         <div class="form-group">
           <label class="form-label">Min Bet</label>
-          <input type="number" class="form-input" value="10" min="1">
+          <input type="number" class="form-input" data-cfg="minBet" value="${c.minBet}" min="1">
         </div>
         <div class="form-group">
           <label class="form-label">Max Bet</label>
-          <input type="number" class="form-input" value="10000" min="1">
+          <input type="number" class="form-input" data-cfg="maxBet" value="${c.maxBet}" min="1">
         </div>
       </div>
     </div>`;
+  bindConfigEvents(el);
 }
 
 // ===== Toast =====
