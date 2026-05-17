@@ -239,19 +239,22 @@ document.getElementById('refresh-guilds-btn')?.addEventListener('click', async (
 
 // Initialize permission state for a guild using its real roles
 function initPermState(guildId) {
-  if (permState[guildId]) return;
-  permState[guildId] = {};
-  channelOverrides[guildId] = {};
+  if (!permState[guildId]) permState[guildId] = {};
+  if (!channelOverrides[guildId]) channelOverrides[guildId] = {};
   const guild = userGuilds.find(g => g.id === guildId);
   const roles = (guild && guild.roles) || [];
   roles.forEach(role => {
-    permState[guildId][role.id] = {};
-    channelOverrides[guildId][role.id] = {};
-    Object.entries(PERM_CATEGORIES).forEach(([cat, cmds]) => {
-      cmds.forEach(cmd => {
-        permState[guildId][role.id][cmd] = true;
+    if (!permState[guildId][role.id]) {
+      permState[guildId][role.id] = {};
+      Object.entries(PERM_CATEGORIES).forEach(([cat, cmds]) => {
+        cmds.forEach(cmd => {
+          permState[guildId][role.id][cmd] = true;
+        });
       });
-    });
+    }
+    if (!channelOverrides[guildId][role.id]) {
+      channelOverrides[guildId][role.id] = {};
+    }
   });
 }
 
@@ -612,8 +615,20 @@ async function openServer(guild) {
   hasUnsaved = false;
   document.getElementById('save-bar').style.display = 'none';
   initPermState(guild.id);
-  if (loadedPerms) permState[guild.id] = loadedPerms;
-  if (loadedOverrides) channelOverrides[guild.id] = loadedOverrides;
+  if (loadedPerms) {
+    Object.keys(loadedPerms).forEach(roleId => {
+      if (loadedPerms[roleId] && Object.keys(loadedPerms[roleId]).length > 0) {
+        permState[guild.id][roleId] = loadedPerms[roleId];
+      }
+    });
+  }
+  if (loadedOverrides) {
+    Object.keys(loadedOverrides).forEach(roleId => {
+      if (loadedOverrides[roleId] && Object.keys(loadedOverrides[roleId]).length > 0) {
+        channelOverrides[guild.id][roleId] = loadedOverrides[roleId];
+      }
+    });
+  }
 
   document.getElementById('server-name').textContent = guild.name;
   document.getElementById('server-info').textContent = guild.members.toLocaleString() + ' members';
@@ -904,8 +919,8 @@ document.getElementById('discard-btn').addEventListener('click', () => {
   hasUnsaved = false;
   document.getElementById('save-bar').style.display = 'none';
   // Reset permissions state and clear role configuration
-  permState[guildId] = {};
-  channelOverrides[guildId] = {};
+  delete permState[guildId];
+  delete channelOverrides[guildId];
   initPermState(guildId);
   currentRole = null;
   renderTab(currentTab);
